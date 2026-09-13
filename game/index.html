@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>小游戏合集 | Soliar</title>
+<style>
+  :root { --bg:#0f1220; --card:#1a2035; --text:#f4f7ff; --muted:#9aa6c3; --accent:#7c9cff; --accent2:#ff7eb6; }
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:radial-gradient(circle at top,#243057,#0f1220 55%);color:var(--text);min-height:100vh}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 18px 48px}
+  h1{margin:0 0 8px;font-size:clamp(1.8rem,4vw,2.4rem)}
+  p.lead{color:var(--muted);margin:0 0 24px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+  a.card{display:block;text-decoration:none;color:inherit;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:18px;transition:.2s transform,.2s border-color,.2s box-shadow}
+  a.card:hover{transform:translateY(-3px);border-color:rgba(124,156,255,.55);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+  .emoji{font-size:2rem;margin-bottom:10px}
+  .title{font-weight:700;margin-bottom:6px}
+  .desc{color:var(--muted);font-size:.92rem;line-height:1.45}
+  .top{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .home{color:var(--accent);text-decoration:none;font-weight:600}
+  footer{margin-top:28px;color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>🎮 小游戏合集</h1>
+        <p class="lead">随手玩一会儿的浏览器小游戏，手机也能上手。</p>
+      </div>
+      <a class="home" href="../">← 返回主页</a>
+    </div>
+    <div class="grid">
+      <a class="card" href="./snake/"><div class="emoji">🐍</div><div class="title">贪吃蛇</div><div class="desc">经典蛇蛇，吃到苹果变长。键盘或滑动控制。</div></a>
+      <a class="card" href="./2048/"><div class="emoji">🔢</div><div class="title">2048</div><div class="desc">滑动合并相同数字，冲击 2048！</div></a>
+      <a class="card" href="./memory/"><div class="emoji">🧠</div><div class="title">记忆翻牌</div><div class="desc">翻开两张相同的牌，考验记忆力。</div></a>
+      <a class="card" href="./clicker/"><div class="emoji">⚡</div><div class="title">反应点击</div><div class="desc">目标出现后尽快点中，测测手速。</div></a>
+    </div>
+    <footer>部署于 GitHub Pages · smallGuDu</footer>
+  </div>
+</body>
+</html>

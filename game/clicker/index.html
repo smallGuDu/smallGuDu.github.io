@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>反应点点乐 · Soliar</title>
+  <link rel="shortcut icon" href="../../smallGuDu.ico" />
+  <style>
+    :root { --bg:#101428; --text:#f6f7fb; --muted:#aeb6d0; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body {
+      margin:0; min-height:100vh; color:var(--text);
+      font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+      background: radial-gradient(circle at 50% 0%, #4a2a1f, #101428 45%);
+      display:flex; flex-direction:column; align-items:center; padding:16px;
+    }
+    .bar { width:min(440px,96vw); display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+    a.back { color:#fff; text-decoration:none; background:rgba(255,255,255,.1); padding:8px 12px; border-radius:12px; }
+    h1 { margin:0; font-size:20px; }
+    .stats { display:flex; gap:8px; }
+    .chip { background:rgba(255,255,255,.1); border-radius:12px; padding:8px 10px; text-align:center; min-width:64px; }
+    .chip b { display:block; color:#ffd37a; }
+    .chip span { font-size:11px; color:var(--muted); }
+    .panel {
+      width:min(440px,96vw); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+      border-radius:20px; padding:14px; box-shadow:0 16px 40px rgba(0,0,0,.28);
+    }
+    .arena {
+      position:relative; height:min(62vw, 360px); border-radius:16px; overflow:hidden;
+      background:linear-gradient(180deg,#1a223d,#0d1428); border:1px solid rgba(255,255,255,.08);
+      touch-action:manipulation;
+    }
+    .target {
+      position:absolute; border:0; border-radius:50%; cursor:pointer;
+      background: radial-gradient(circle at 30% 30%, #fff6c8, #ffb347 45%, #ff6b6b 100%);
+      box-shadow:0 0 0 0 rgba(255,211,122,.5); animation:pulse 1.1s infinite;
+      transform:translate(-50%,-50%);
+    }
+    @keyframes pulse {
+      0% { box-shadow:0 0 0 0 rgba(255,211,122,.45); }
+      70% { box-shadow:0 0 0 14px rgba(255,211,122,0); }
+      100% { box-shadow:0 0 0 0 rgba(255,211,122,0); }
+    }
+    .overlay {
+      position:absolute; inset:0; display:grid; place-items:center; text-align:center;
+      background:rgba(8,12,24,.72); backdrop-filter:blur(3px); padding:20px;
+    }
+    .overlay.hidden { display:none; }
+    .overlay h2 { margin:0 0 8px; }
+    .overlay p { margin:0 0 14px; color:var(--muted); }
+    button.action {
+      border:0; border-radius:12px; padding:10px 16px; font-weight:700; cursor:pointer;
+      background:linear-gradient(135deg,#ffd37a,#ff8fb8); color:#2a1608;
+    }
+    .btns { display:flex; gap:10px; justify-content:center; margin-top:12px; }
+    button.ghost { border:0; border-radius:12px; padding:10px 16px; font-weight:700; cursor:pointer; background:rgba(255,255,255,.1); color:#fff; }
+    .hint { margin:12px 0 0; color:var(--muted); font-size:13px; text-align:center; line-height:1.6; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="back" href="../">← 大厅</a>
+    <h1>⚡ 反应点点乐</h1>
+    <div class="stats">
+      <div class="chip"><b id="score">0</b><span>得分</span></div>
+      <div class="chip"><b id="time">20</b><span>秒</span></div>
+      <div class="chip"><b id="best">0</b><span>最高</span></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="arena" id="arena">
+      <div class="overlay" id="overlay">
+        <div>
+          <h2 id="title">准备挑战手速？</h2>
+          <p id="msg">20 秒内点掉尽可能多的光点</p>
+          <button class="action" id="startBtn">开始</button>
+        </div>
+      </div>
+    </div>
+    <div class="btns"><button class="ghost" id="restartBtn">重开</button></div>
+    <p class="hint">目标越小越难，连击会加分哦～</p>
+  </div>
+<script>
+(() => {
+  const arena = document.getElementById('arena');
+  const overlay = document.getElementById('overlay');
+  const title = document.getElementById('title');
+  const msg = document.getElementById('msg');
+  const scoreEl = document.getElementById('score');
+  const timeEl = document.getElementById('time');
+  const bestEl = document.getElementById('best');
+  const DURATION = 20;
+  let score=0, time=DURATION, timer=null, spawnTimer=null, combo=0, playing=false;
+  let best = Number(localStorage.getItem('soliarClickBest')||0);
+  bestEl.textContent = best;
+
+  function clearTargets() {
+    [...arena.querySelectorAll('.target')].forEach(el => el.remove());
+  }
+
+  function spawn() {
+    if (!playing) return;
+    const btn = document.createElement('button');
+    btn.className = 'target';
+    const size = Math.max(34, 70 - Math.min(score, 40));
+    const rect = arena.getBoundingClientRect();
+    const x = 10 + Math.random() * (rect.width - 20);
+    const y = 10 + Math.random() * (rect.height - 20);
+    btn.style.width = btn.style.height = size + 'px';
+    btn.style.left = x + 'px';
+    btn.style.top = y + 'px';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!playing) return;
+      combo++;
+      const gain = 1 + Math.floor(combo / 3);
+      score += gain;
+      scoreEl.textContent = score;
+      btn.remove();
+      if (arena.querySelectorAll('.target').length < 2) spawn();
+    });
+    arena.appendChild(btn);
+    setTimeout(() => {
+      if (btn.isConnected) { btn.remove(); combo = 0; }
+    }, 1400 - Math.min(score * 8, 500));
+  }
+
+  function stop(endText) {
+    playing = false;
+    clearInterval(timer); clearInterval(spawnTimer); clearTargets();
+    if (score > best) {
+      best = score; bestEl.textContent = best;
+      localStorage.setItem('soliarClickBest', String(best));
+    }
+    title.textContent = endText;
+    msg.textContent = `本局得分：${score}` + (score>=best && score>0 ? ' · 新纪录！' : '');
+    overlay.classList.remove('hidden');
+  }
+
+  function start() {
+    score = 0; combo = 0; time = DURATION; playing = true;
+    scoreEl.textContent = '0'; timeEl.textContent = String(DURATION);
+    clearTargets(); overlay.classList.add('hidden');
+    clearInterval(timer); clearInterval(spawnTimer);
+    spawn(); spawn();
+    spawnTimer = setInterval(spawn, 700);
+    timer = setInterval(() => {
+      time--; timeEl.textContent = String(time);
+      if (time <= 0) stop('时间到！');
+    }, 1000);
+  }
+
+  document.getElementById('startBtn').onclick = start;
+  document.getElementById('restartBtn').onclick = () => { stop('再来一次？'); start(); };
+})();
+</script>
+</body>
+</html>

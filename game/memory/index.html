@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>记忆翻牌 · Soliar</title>
+  <link rel="shortcut icon" href="../../smallGuDu.ico" />
+  <style>
+    :root { --bg:#101428; --text:#f6f7fb; --muted:#aeb6d0; }
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body {
+      margin:0; min-height:100vh; color:var(--text);
+      font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+      background: radial-gradient(circle at 80% 10%, #1f3d3a, #101428 42%);
+      display:flex; flex-direction:column; align-items:center; padding:16px;
+    }
+    .bar { width:min(440px,96vw); display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+    a.back { color:#fff; text-decoration:none; background:rgba(255,255,255,.1); padding:8px 12px; border-radius:12px; }
+    h1 { margin:0; font-size:22px; }
+    .stats { display:flex; gap:8px; }
+    .chip { background:rgba(255,255,255,.1); border-radius:12px; padding:8px 10px; text-align:center; min-width:64px; }
+    .chip b { display:block; color:#b6f5a8; }
+    .chip span { font-size:11px; color:var(--muted); }
+    .panel {
+      width:min(440px,96vw); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
+      border-radius:20px; padding:14px; box-shadow:0 16px 40px rgba(0,0,0,.28);
+    }
+    .board {
+      display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+    }
+    .card {
+      aspect-ratio:1; border:0; border-radius:14px; cursor:pointer; position:relative;
+      perspective:800px; background:transparent; padding:0;
+    }
+    .inner {
+      position:absolute; inset:0; border-radius:14px; transition: transform .35s;
+      transform-style:preserve-3d; box-shadow:0 8px 18px rgba(0,0,0,.2);
+    }
+    .card.flipped .inner, .card.matched .inner { transform: rotateY(180deg); }
+    .face {
+      position:absolute; inset:0; display:grid; place-items:center; border-radius:14px;
+      backface-visibility:hidden; font-size:clamp(26px,8vw,36px); font-weight:700;
+    }
+    .front { background:linear-gradient(145deg,#31456f,#223053); color:#9eb6ff; }
+    .back { background:linear-gradient(145deg,#2d5b4e,#1d3d38); transform:rotateY(180deg); }
+    .card.matched .back { background:linear-gradient(145deg,#5d8f4d,#3f6a3a); }
+    .btns { display:flex; gap:10px; justify-content:center; margin-top:12px; }
+    button.action {
+      border:0; border-radius:12px; padding:10px 16px; font-weight:700; cursor:pointer;
+      background:linear-gradient(135deg,#b6f5a8,#7ad7ff); color:#102018;
+    }
+    .hint { margin:12px 0 0; color:var(--muted); font-size:13px; text-align:center; line-height:1.6; }
+    .win {
+      display:none; margin-top:12px; text-align:center; padding:12px; border-radius:14px;
+      background:rgba(182,245,168,.12); border:1px solid rgba(182,245,168,.3);
+    }
+    .win.show { display:block; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="back" href="../">← 大厅</a>
+    <h1>🧠 记忆翻牌</h1>
+    <div class="stats">
+      <div class="chip"><b id="moves">0</b><span>步数</span></div>
+      <div class="chip"><b id="pairs">0/8</b><span>配对</span></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="board" id="board"></div>
+    <div class="win" id="win">太棒啦！全部配对成功 🎉</div>
+    <div class="btns"><button class="action" id="restart">再来一局</button></div>
+    <p class="hint">一次翻两张，相同就留下。尽量用更少步数通关～</p>
+  </div>
+<script>
+(() => {
+  const ICONS = ['🌸','⭐','🌙','🍓','🐱','🎵','☁️','🔥'];
+  const board = document.getElementById('board');
+  const movesEl = document.getElementById('moves');
+  const pairsEl = document.getElementById('pairs');
+  const winEl = document.getElementById('win');
+  let cards, lock, first, moves, matched;
+
+  function shuffle(arr) {
+    for (let i=arr.length-1;i>0;i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function reset() {
+    const deck = shuffle([...ICONS, ...ICONS]).map((icon, id) => ({icon, id, flipped:false, matched:false}));
+    cards = deck; lock = false; first = null; moves = 0; matched = 0;
+    movesEl.textContent = '0'; pairsEl.textContent = '0/8'; winEl.classList.remove('show');
+    board.innerHTML = '';
+    cards.forEach((card, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'card';
+      btn.setAttribute('aria-label', '翻牌');
+      btn.innerHTML = `<div class="inner"><div class="face front">?</div><div class="face back">${card.icon}</div></div>`;
+      btn.addEventListener('click', () => flip(idx, btn));
+      board.appendChild(btn);
+    });
+  }
+
+  function flip(idx, btn) {
+    const card = cards[idx];
+    if (lock || card.flipped || card.matched) return;
+    card.flipped = true; btn.classList.add('flipped');
+    if (!first) { first = {idx, btn}; return; }
+    moves++; movesEl.textContent = moves; lock = true;
+    const a = cards[first.idx], b = card;
+    if (a.icon === b.icon) {
+      a.matched = b.matched = true;
+      first.btn.classList.add('matched'); btn.classList.add('matched');
+      matched++; pairsEl.textContent = `${matched}/8`;
+      first = null; lock = false;
+      if (matched === 8) winEl.classList.add('show');
+    } else {
+      setTimeout(() => {
+        a.flipped = b.flipped = false;
+        first.btn.classList.remove('flipped');
+        btn.classList.remove('flipped');
+        first = null; lock = false;
+      }, 650);
+    }
+  }
+
+  document.getElementById('restart').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>
